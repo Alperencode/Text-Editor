@@ -1,12 +1,39 @@
 /** Terminal Functions **/
 
+/** Includes **/
+#include <termios.h>
+#include <ctype.h>
+#include <unistd.h>
+#include <stdlib.h>
+#include <stdio.h>
+
 /** Function Prototypes **/
+char editorReadKey();
+void editorProcessKeypress();
 void enableRawMode();
 void disableRawMode();
 void die(const char*);
 
+/** Macros **/
+#define CTRL_KEY(c) ((c) & 0x1f) /* ands with 0x1f the given key (what ctrl key does) */
+
 /** Global Variables **/
 struct termios o_termios;
+
+/** Functions **/
+char editorReadKey(){
+	int readReturn;
+	char c;
+	while((readReturn = read(STDIN_FILENO, &c, 1)) != 1)
+		if(readReturn == -1) die("read error");
+	return c;
+}
+
+void editorProcessKeypress(){
+	char c = editorReadKey();
+
+	if(c==CTRL_KEY('q')) die("Exit Program");
+}
 
 void enableRawMode(){
 	/* In raw mode it passed every pressed char to program */
@@ -57,6 +84,7 @@ void disableRawMode(){
 }
 
 void die(const char *message){
+	disableRawMode();
 	perror(message);
 	exit(1);
 }

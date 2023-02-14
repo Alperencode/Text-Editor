@@ -10,22 +10,27 @@ void enableRawMode();
 struct termios o_termios;
 
 int main(){
+	enableRawMode();
 	char c;
 
-	enableRawMode();
+	while(1){
 
-        /* reading 1 byte and assigning	it to 'c'
-	 * read() returns the number of bytes that it read
-	 * Terminal starts canonical mode (cooked mode)
-	 * In canonical mode, it sends data to program when user hits enter */
-	while(read(STDIN_FILENO, &c, 1) == 1 && c != 'q'){
-		// iscontrl test if char is a control char
+        	/* Reading 1 byte and assigning it to 'c'
+	 	* read() returns the number of bytes that it read
+	 	* Terminal starts canonical mode (cooked mode)
+	 	* In canonical mode, it sends data to program when user hits enter */
+		read(STDIN_FILENO, &c, 1);
+
+		// iscontrl test if char is a control char, if so printing its ASCII
 		if(iscntrl(c))
-			printf("%d\n", c);
-		// else we are printing the char's ASCII code and the char
+			printf("%d\r\n", c);
+		// else we are printing the char's ASCII and the char
 		else
-			printf("%d('%c') ", c, c);
+			printf("%d('%c')\r\n", c, c);
+
+		if(c=='q') break;
 	}
+
 	return 0;
 }
 
@@ -35,20 +40,39 @@ void enableRawMode(){
 	// Calls disable function when program ends
 	atexit(disableRawMode);
 
-	// gathering terminal attributes
+	// Gathering terminal attributes
 	tcgetattr(STDIN_FILENO, &o_termios);
 
 	struct termios raw = o_termios;
 
-	/* c_lflag: local flags
+	/* Bitflags 
 	 * ~ : bitwise not operator 
-	 * ECHO is a bitflag and we disabling it by reversing it's bits
-	 * We reversing it's bits with bitwise-AND operator
-	 * ICANON is canonical mode flag and we are reversing it too
+	 * We reversing given bitflags with bitwise-AND operator
 	 * */
-	raw.c_lflag &= ~(ECHO | ICANON);
 
-	/* applying terminal attributes
+	/* c_lflag: Local Flags
+	 * - ECHO for echo flag (echo of input characters back to the terminal)
+	 * - ICANON for canonical mode 
+	 * - ISIG for ctrl+c and ctrl+z signals
+	 * - IEXTEN for ctrl+v signal (cannot rely on this interpretation on all systems)
+	 * Local Flags explained here: https://www.gnu.org/software/libc/manual/html_node/Local-Modes.html
+	 * */
+	raw.c_lflag &= ~(ECHO | ICANON | IEXTEN | ISIG);
+
+	/* c_iflag: Input Flags
+	 * - IXON for ctrl+s and ctrl+q signal
+	 * - ICRNL for ctrl+m and enter
+	 * Input Flags explained here: https://www.gnu.org/software/libc/manual/html_node/Input-Modes.html 
+	 * */
+	raw.c_iflag &= ~(IXON | ICRNL);
+
+	/* o_iflag: Output Flags
+	 * - OPOST for output processing
+	 * Output Flags explained here: https://www.gnu.org/software/libc/manual/html_node/Output-Modes.html 
+	 * */
+	raw.c_oflag &= ~(OPOST);
+
+	/* Applying terminal attributes
 	 * TCAFLUS: specifies when to apply change */
 	tcsetattr(STDIN_FILENO, TCSAFLUSH, &raw);
 }

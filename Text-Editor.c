@@ -1,14 +1,19 @@
+/** Includes **/
 #include <stdio.h>
 #include <ctype.h>
 #include <unistd.h>
 #include <termios.h>
 #include <stdlib.h>
 
+/** Functions Prototypes **/
 void disableRawMode();
 void enableRawMode();
+void die(const char*);
 
+/** Global Variables **/
 struct termios o_termios;
 
+/** Main **/
 int main(){
 	enableRawMode();
 	char c;
@@ -19,12 +24,12 @@ int main(){
 	 	* read() returns the number of bytes that it read
 	 	* Terminal starts canonical mode (cooked mode)
 	 	* In canonical mode, it sends data to program when user hits enter */
-		read(STDIN_FILENO, &c, 1);
+		if(read(STDIN_FILENO, &c, 1) == -1) die("read error");
 
 		// iscontrl test if char is a control char, if so printing its ASCII
 		if(iscntrl(c))
 			printf("%d\r\n", c);
-		// else we are printing the char's ASCII and the char
+		// else printing the char's ASCII and the char
 		else
 			printf("%d('%c')\r\n", c, c);
 
@@ -34,6 +39,8 @@ int main(){
 	return 0;
 }
 
+/** Terminal Functions **/
+
 void enableRawMode(){
 	/* In raw mode it passed every char to program */
 
@@ -41,13 +48,13 @@ void enableRawMode(){
 	atexit(disableRawMode);
 
 	// Gathering terminal attributes
-	tcgetattr(STDIN_FILENO, &o_termios);
+	if(tcgetattr(STDIN_FILENO, &o_termios) == -1) die("tcgetattr error");
 
 	struct termios raw = o_termios;
 
 	/* Bitflags 
 	 * ~ : bitwise not operator 
-	 * We reversing given bitflags with bitwise-AND operator
+	 * Reversing given bitflags with bitwise-AND operator
 	 * */
 
 	/* c_lflag: Local Flags
@@ -74,9 +81,15 @@ void enableRawMode(){
 
 	/* Applying terminal attributes
 	 * TCAFLUS: specifies when to apply change */
-	tcsetattr(STDIN_FILENO, TCSAFLUSH, &raw);
+	if(tcsetattr(STDIN_FILENO, TCSAFLUSH, &raw) == -1) die("tcsetattr error");
 }
 
 void disableRawMode(){
-	tcsetattr(STDIN_FILENO, TCSAFLUSH, &o_termios);
+	if(tcsetattr(STDIN_FILENO, TCSAFLUSH, &o_termios) == -1)
+		die("tcsetattr error");
+}
+
+void die(const char *message){
+	perror(message);
+	exit(1);
 }

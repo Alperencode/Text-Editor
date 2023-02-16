@@ -2,7 +2,6 @@
 #define EDITOR_H
 
 /** Includes **/
-#include "append_buffer.h"
 #include <termios.h>
 #include <ctype.h>
 #include <unistd.h>
@@ -10,8 +9,10 @@
 #include <stdio.h>
 #include <string.h>
 #include <sys/ioctl.h>
+#include "append_buffer.h"
 
 /** Macros **/
+#define VERSION "0.0.1"
 #define CTRL_KEY(c) ((c) & 0x1f) /* ands with 0x1f the given key (what ctrl key does) */
 
 /** Function Prototypes **/
@@ -19,6 +20,7 @@ char editorReadKey();
 void editorProcessKeypress();
 void editorDrawRows();
 void editorRefreshScreen();
+void editorMoveCursor(char);
 void enableRawMode();
 void disableRawMode();
 void initEditor();
@@ -27,6 +29,7 @@ void die(const char*);
 
 struct editorConfig{
     int screenRows, screenCols;
+    int cursorX, cursorY;
     struct termios original_termios;
 };
 
@@ -58,6 +61,9 @@ void editorProcessKeypress() {
     // If the user pressed Ctrl-Q, exit the program.
     if (c == CTRL_KEY('q'))
         die("Exit Program");
+    else if(c == 'w' || 's' || 'a' || 'd')
+        editorMoveCursor(c);
+
 }
 
 /**
@@ -67,8 +73,41 @@ void editorDrawRows(struct appendBuffer *ab) {
     int i;
 
     // Write a tilde character to each row of the screen, followed by a newline character.
-    for (i = 0; i < Editor.screenRows; i++)
-        abAppend(ab, "~\r\n", 3);
+    for (i = 0; i < Editor.screenRows; i++){
+
+        if(i == Editor.screenRows / 2){
+            // Printing Welcome message
+            char welcomeMessage[35];
+            abAppend(ab, "~", 1);
+
+            // Interpolate welcome message with Version
+            int welcomeMessageLen = snprintf(
+                    welcomeMessage,
+                    sizeof(welcomeMessage),
+                    "Text Editor -- Version %s",
+                    VERSION);
+
+            if(welcomeMessageLen > Editor.screenCols)
+                welcomeMessageLen = Editor.screenCols;
+
+            // Centering the welcome message
+            int padding = (Editor.screenCols - welcomeMessageLen) / 2;
+            while(--padding) abAppend(ab, " ", 1);
+
+            // Sending message to buffer
+            abAppend(ab, welcomeMessage, welcomeMessageLen);
+        }else
+            // Printing tilde for each line
+            abAppend(ab, "~", 1);
+
+        // Sending erase line command with escape seuqence for each line
+        abAppend(ab, "\x1b[K", 3);
+
+        if(i < Editor.screenRows -1)
+            abAppend(ab, "\r\n", 2);
+
+    }
+
 }
 
 
@@ -78,18 +117,46 @@ void editorDrawRows(struct appendBuffer *ab) {
 void editorRefreshScreen() {
     struct appendBuffer ab = ABUF_INIT;
 
-    // Send ANSI escape sequences to clear the screen and reset the cursor position.
-    abAppend(&ab, "\x1b[2J", 4);
+    // Send ANSI escape sequences to hide cursor and reset the cursor position.
+    abAppend(&ab, "\x1b[?25l", 6);
     abAppend(&ab, "\x1b[H", 3);
 
     // Redraw the editor rows.
     editorDrawRows(&ab);
 
-    // Reset the cursor position to the top-left corner of the screen.
-    abAppend(&ab, "\x1b[H", 3);
+    char buf[32];
+    snprintf(buf, sizeof(buf), "\x1b[%d;%dH", Editor.cursorY + 1, Editor.cursorX + 1);
+    abAppend(&ab, buf, strlen(buf));
+
+    // Show the cursor.
+    abAppend(&ab, "\x1b[?25h", 6);
 
     write(STDOUT_FILENO, ab.buffer, ab.len);
     abFree(&ab);
+}
+
+/**
+ * Moves the cursor position in response to a user input key.
+ *
+ * @param key The key char that was pressed to trigger the cursor movement.
+ */
+void editorMoveCursor(char key) {
+
+    switch(key) {
+        case 'a':
+            Editor.cursorX--;
+            break;
+        case 'd':
+            Editor.cursorX++;
+            break;
+        case 'w':
+            Editor.cursorY--;
+            break;
+        case 's':
+            Editor.cursorY++;
+            break;
+    }
+
 }
 
 /**
@@ -136,6 +203,8 @@ void disableRawMode() {
  * Initializes the editor by getting the screen size.
  */
 void initEditor() {
+    Editor.cursorX = Editor.cursorY = 0;
+
     if (getWindowSize(&Editor.screenRows, &Editor.screenCols) == -1)
         die("getWindowSize error");
 }
@@ -168,8 +237,8 @@ int getWindowSize(int *rows, int *cols) {
  */
 void die(const char *message) {
     disableRawMode();
-    editorRefreshScreen();
-    perror(message);
+    perror(message); // Error message
+    write(STDOUT_FILENO, "\x1b[2J", 4); // Clear screen
     exit(1);
 }
 

@@ -1,5 +1,5 @@
 /** Includes **/
-#include "terminal_functions.h"
+#include "editor.h"
 
 /** Main **/
 int main(){

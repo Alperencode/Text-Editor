@@ -1,12 +1,18 @@
-/** Terminal Functions **/
+#ifndef EDITOR_H
+#define EDITOR_H
 
 /** Includes **/
+#include "append_buffer.h"
 #include <termios.h>
 #include <ctype.h>
 #include <unistd.h>
 #include <stdlib.h>
 #include <stdio.h>
+#include <string.h>
 #include <sys/ioctl.h>
+
+/** Macros **/
+#define CTRL_KEY(c) ((c) & 0x1f) /* ands with 0x1f the given key (what ctrl key does) */
 
 /** Function Prototypes **/
 char editorReadKey();
@@ -19,18 +25,12 @@ void initEditor();
 int getWindowSize(int*, int*);
 void die(const char*);
 
-/** Macros **/
-#define CTRL_KEY(c) ((c) & 0x1f) /* ands with 0x1f the given key (what ctrl key does) */
-
-/** Global Struct **/
 struct editorConfig{
     int screenRows, screenCols;
     struct termios original_termios;
 };
 
 struct editorConfig Editor;
-
-/** Functions **/
 
 /**
  * Waits for the user to press a key and returns the key that was pressed.
@@ -63,12 +63,12 @@ void editorProcessKeypress() {
 /**
  * Draws the rows of the editor to the screen.
  */
-void editorDrawRows() {
+void editorDrawRows(struct appendBuffer *ab) {
     int i;
 
     // Write a tilde character to each row of the screen, followed by a newline character.
     for (i = 0; i < Editor.screenRows; i++)
-        write(STDOUT_FILENO, "~\r\n", 3);
+        abAppend(ab, "~\r\n", 3);
 }
 
 
@@ -76,16 +76,20 @@ void editorDrawRows() {
  * Clears the screen and redraws the editor contents.
  */
 void editorRefreshScreen() {
+    struct appendBuffer ab = ABUF_INIT;
 
     // Send ANSI escape sequences to clear the screen and reset the cursor position.
-    write(STDOUT_FILENO, "\x1b[2J", 4);
-    write(STDOUT_FILENO, "\x1b[H", 3);
+    abAppend(&ab, "\x1b[2J", 4);
+    abAppend(&ab, "\x1b[H", 3);
 
     // Redraw the editor rows.
-    editorDrawRows();
+    editorDrawRows(&ab);
 
     // Reset the cursor position to the top-left corner of the screen.
-    write(STDOUT_FILENO, "\x1b[H", 3);
+    abAppend(&ab, "\x1b[H", 3);
+
+    write(STDOUT_FILENO, ab.buffer, ab.len);
+    abFree(&ab);
 }
 
 /**
@@ -168,3 +172,5 @@ void die(const char *message) {
     perror(message);
     exit(1);
 }
+
+#endif

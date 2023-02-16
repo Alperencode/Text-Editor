@@ -1,7 +1,5 @@
-/** Includes **/
-#include "editor.h"
+#include "headers/libraries.h"
 
-/** Main **/
 int main(){
 
 	enableRawMode();

@@ -5,6 +5,14 @@
 #define VERSION "0.0.1"
 #define CTRL_KEY(c) ((c) & 0x1f) /* ands with 0x1f the given key (what ctrl key does) */
 
+/** Enums **/
+enum editorKeys{
+    ARROW_LEFT = 'a',
+    ARROW_RIGHT = 'd',
+    ARROW_UP= 'w',
+    ARROW_DOWN = 's',
+}
+
 /** Function Prototypes **/
 char editorReadKey();
 void editorProcessKeypress();
@@ -44,7 +52,31 @@ char editorReadKey() {
         if (readReturn == -1) die("read error");
     }
 
-    return c;
+    // If key is escape sequence
+    if(c == '\x1b'){
+        char seq[3];
+
+        // If user does not enter any key after ESC, return ESC
+        if (read(STDIN_FILENO, &seq[0], 1) != 1) return '\x1b';
+        if (read(STDIN_FILENO, &seq[1], 1) != 1) return '\x1b';
+
+        // If its valid escape sequence
+        if(seq[0] == '['){
+            switch(seq[1]){
+                // Matching arrow key movements
+                case 'A': return ARROW_UP;
+                case 'B': return ARROW_DOWN;
+                case 'C': return ARROW_RIGHT;
+                case 'D': return ARROW_LEFT;
+            }
+        }
+
+        return '\x1b';
+
+    }else
+        // Else, its normal char
+        return c;
+
 }
 
 /**
@@ -56,7 +88,7 @@ void editorProcessKeypress() {
     // If the user pressed Ctrl-Q, exit the program.
     if (c == CTRL_KEY('q'))
         die("Exit Program");
-    else if(c == 'w' || 's' || 'a' || 'd')
+    else if(c == ARROW_UP || ARROW_DOWN || ARROW_RIGHT || ARROW_LEFT)
         editorMoveCursor(c);
 
 }
@@ -118,6 +150,7 @@ void editorRefreshScreen() {
     // Redraw the editor rows.
     editorDrawRows(&ab);
 
+    // Update cursor position with new values
     char buf[32];
     snprintf(buf, sizeof(buf), "\x1b[%d;%dH", Editor.cursorY + 1, Editor.cursorX + 1);
     abAppend(&ab, buf, strlen(buf));
@@ -137,16 +170,16 @@ void editorRefreshScreen() {
 void editorMoveCursor(char key) {
 
     switch(key) {
-        case 'a':
+        case ARROW_LEFT:
             Editor.cursorX--;
             break;
-        case 'd':
+        case ARROW_RIGHT:
             Editor.cursorX++;
             break;
-        case 'w':
+        case ARROW_UP:
             Editor.cursorY--;
             break;
-        case 's':
+        case ARROW_DOWN:
             Editor.cursorY++;
             break;
     }

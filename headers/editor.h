@@ -7,18 +7,18 @@
 
 /** Enums **/
 enum editorKeys{
-    ARROW_LEFT = 'a',
-    ARROW_RIGHT = 'd',
-    ARROW_UP= 'w',
-    ARROW_DOWN = 's',
-}
+    ARROW_LEFT = 1000,
+    ARROW_RIGHT,
+    ARROW_UP,
+    ARROW_DOWN,
+};
 
 /** Function Prototypes **/
-char editorReadKey();
+int editorReadKey();
 void editorProcessKeypress();
 void editorDrawRows();
 void editorRefreshScreen();
-void editorMoveCursor(char);
+void editorMoveCursor(int);
 void initEditor();
 int getWindowSize(int*, int*);
 
@@ -43,7 +43,7 @@ struct editorConfig Editor;
  *
  * @return The key that was pressed.
  */
-char editorReadKey() {
+int editorReadKey() {
     int readReturn;
     char c;
 
@@ -83,7 +83,7 @@ char editorReadKey() {
  * Processes a single keypress from the user and performs the appropriate action.
  */
 void editorProcessKeypress() {
-    char c = editorReadKey();
+    int c = editorReadKey();
 
     // If the user pressed Ctrl-Q, exit the program.
     if (c == CTRL_KEY('q'))
@@ -165,9 +165,9 @@ void editorRefreshScreen() {
 /**
  * Moves the cursor position in response to a user input key.
  *
- * @param key The key char that was pressed to trigger the cursor movement.
+ * @param key The key that was pressed to trigger the cursor movement.
  */
-void editorMoveCursor(char key) {
+void editorMoveCursor(int key) {
 
     switch(key) {
         case ARROW_LEFT:

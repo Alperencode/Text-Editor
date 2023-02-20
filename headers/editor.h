@@ -11,6 +11,8 @@ enum editorKeys{
     ARROW_RIGHT,
     ARROW_UP,
     ARROW_DOWN,
+    PAGE_UP,
+    PAGE_DOWN
 };
 
 /** Function Prototypes **/
@@ -49,29 +51,46 @@ int editorReadKey() {
     char c;
 
     // Wait for a single keypress from the user.
-    while ((readReturn = read(STDIN_FILENO, &c, 1)) != 1) {
+    while ((readReturn = read(STDIN_FILENO, &c, 1)) != 1)
         if (readReturn == -1) die("read error");
-    }
 
     // If key is escape sequence
     if(c == '\x1b'){
         char seq[3];
 
-        // If user does not enter any key after ESC, return ESC
-        if (read(STDIN_FILENO, &seq[0], 1) != 1) return '\x1b';
-        if (read(STDIN_FILENO, &seq[1], 1) != 1) return '\x1b';
+        // Read 2 more bytes after sequence (with error handling)
+        if (read(STDIN_FILENO, &seq[0], 1) == -1) return '\x1b';
+        if (read(STDIN_FILENO, &seq[1], 1) == -1) return '\x1b';
 
         // If its valid escape sequence
         if(seq[0] == '['){
-            switch(seq[1]){
-                // Matching arrow key movements
-                case 'A': return ARROW_UP;
-                case 'B': return ARROW_DOWN;
-                case 'C': return ARROW_RIGHT;
-                case 'D': return ARROW_LEFT;
+
+            // If its digit (command key)
+            if(seq[1] >= '0' && seq[1] <= '9'){
+
+                // Read one more byte 
+                if (read(STDIN_FILENO, &seq[2], 1) == -1) return '\x1b';
+
+                if (seq[2] == '~') {
+                    switch(seq[1]){
+                        // Matching command key
+                        case '5': return PAGE_UP;
+                        case '6': return PAGE_DOWN;
+                    }
+                }
             }
+            else{
+                switch(seq[1]){
+                    // Matching arrow key movements
+                    case 'A': return ARROW_UP;
+                    case 'B': return ARROW_DOWN;
+                    case 'C': return ARROW_RIGHT;
+                    case 'D': return ARROW_LEFT;
+                }
+            }           
         }
 
+        // If its not any special key, return
         return '\x1b';
 
     }else
@@ -89,6 +108,11 @@ void editorProcessKeypress() {
     // If the user pressed Ctrl-Q, exit the program.
     if (c == CTRL_KEY('q'))
         die("Exit Program");
+
+    else if(c == PAGE_UP || PAGE_DOWN)
+        for(int i = 0; i < Editor.screenRows; i++)
+            editorMoveCursor(c == PAGE_UP ? ARROW_UP : ARROW_DOWN);
+
     else if(c == ARROW_UP || ARROW_DOWN || ARROW_RIGHT || ARROW_LEFT)
         editorMoveCursor(c);
 
@@ -98,10 +122,9 @@ void editorProcessKeypress() {
  * Draws the rows of the editor to the screen.
  */
 void editorDrawRows(struct appendBuffer *ab) {
-    int i;
 
     // Write a tilde character to each row of the screen, followed by a newline character.
-    for (i = 0; i < Editor.screenRows; i++){
+    for(int i = 0; i < Editor.screenRows; i++){
 
         if(i == Editor.screenRows / 2){
             // Printing Welcome message

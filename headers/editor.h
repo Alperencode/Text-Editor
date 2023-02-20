@@ -3,7 +3,7 @@
 
 /** Macros **/
 #define VERSION "0.0.1"
-#define CTRL_KEY(c) ((c) & 0x1f) /* ands with 0x1f the given key (what ctrl key does) */
+#define CTRL_KEY(c) ((c) & 0x1f) /* ands with 0x1f the given key (ctrl key function) */
 
 /** Enums **/
 enum editorKeys{
@@ -25,6 +25,7 @@ int getWindowSize(int*, int*);
 void enableRawMode();
 void disableRawMode();
 
+void clearScreen();
 void die(const char*);
 
 
@@ -141,9 +142,11 @@ void editorDrawRows(struct appendBuffer *ab) {
  * Clears the screen and redraws the editor contents.
  */
 void editorRefreshScreen() {
+
+    // Creating empty buffer
     struct appendBuffer ab = ABUF_INIT;
 
-    // Send ANSI escape sequences to hide cursor and reset the cursor position.
+    // Send escape sequences to hide cursor and reset the cursor position.
     abAppend(&ab, "\x1b[?25l", 6);
     abAppend(&ab, "\x1b[H", 3);
 
@@ -158,7 +161,10 @@ void editorRefreshScreen() {
     // Show the cursor.
     abAppend(&ab, "\x1b[?25h", 6);
 
+    // Sending buffer
     write(STDOUT_FILENO, ab.buffer, ab.len);
+
+    // Clearing the buffer from memory
     abFree(&ab);
 }
 
@@ -171,16 +177,20 @@ void editorMoveCursor(int key) {
 
     switch(key) {
         case ARROW_LEFT:
-            Editor.cursorX--;
+            if(Editor.cursorX != 0)
+                Editor.cursorX--;
             break;
         case ARROW_RIGHT:
-            Editor.cursorX++;
+            if(Editor.cursorX != Editor.screenCols)
+                Editor.cursorX++;
             break;
         case ARROW_UP:
-            Editor.cursorY--;
+            if(Editor.cursorY != 0)
+                Editor.cursorY--;
             break;
         case ARROW_DOWN:
-            Editor.cursorY++;
+            if(Editor.cursorY != Editor.screenRows)
+                Editor.cursorY++;
             break;
     }
 
@@ -224,9 +234,13 @@ int getWindowSize(int *rows, int *cols) {
  */
 void die(const char *message) {
     disableRawMode();
+    clearScreen();
     perror(message);
-    write(STDOUT_FILENO, "\x1b[2J", 4); // Clear screen
     exit(1);
+}
+
+void clearScreen(){
+    write(STDOUT_FILENO, "\x1b[2J", 4);
 }
 
 #endif

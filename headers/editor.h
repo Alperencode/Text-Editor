@@ -7,6 +7,9 @@
 // Bitwise and with 0x1f the given key (ctrl key function)
 #define CTRL_KEY(c) ((c) & 0x1f)
 
+// Reads y bytes and assigns it to x's address
+#define READ(x, y) (read(STDIN_FILENO, &x, y) == -1)
+
 /** Enums **/
 enum editorKeys{
     ARROW_LEFT = 1000,
@@ -51,20 +54,18 @@ struct editorConfig Editor;
  * @return The key that was pressed.
  */
 int editorReadKey() {
-    int readReturn;
     char c;
 
     // Wait for a single keypress from the user.
-    while((readReturn = read(STDIN_FILENO, &c, 1)) != 1)
-        if (readReturn == -1) die("read error");
+    if(READ(c,1)) die("read error");
 
     // If key is escape sequence
     if(c == '\x1b'){
         char seq[3];
 
         // Read 2 more bytes after sequence (with error handling)
-        if (read(STDIN_FILENO, &seq[0], 1) == -1) return '\x1b';
-        if (read(STDIN_FILENO, &seq[1], 1) == -1) return '\x1b';
+        if (READ(seq[0],1)) return '\x1b';
+        if (READ(seq[1],1)) return '\x1b';
 
         // If its valid escape sequence
         if(seq[0] == '['){
@@ -73,7 +74,7 @@ int editorReadKey() {
             if(seq[1] >= '0' && seq[1] <= '9'){
 
                 // Read one more byte 
-                if (read(STDIN_FILENO, &seq[2], 1) == -1) return '\x1b';
+                if (READ(seq[2],1)) return '\x1b';
 
                 if (seq[2] == '~') {
                     switch(seq[1]){
@@ -125,7 +126,7 @@ void editorProcessKeypress() {
     switch(c) {
         // If the user pressed Ctrl-Q, exit the program.
         case CTRL_KEY('q'):
-            die("Exit Program"CTRL_KEY('q'));
+            die("Exit Program");
             break;
 
         // Arrow keys: Call MoveCursor
@@ -296,10 +297,11 @@ void die(const char *message) {
 }
 
 /**
- * Clears the terminal screen by sending escape sequence
+ * Clears the terminal screen and resets cursor position
  */
 void clearScreen(){
     write(STDOUT_FILENO, "\x1b[2J", 4);
+    write(STDOUT_FILENO, "\x1b[H", 3);
 }
 
 #endif

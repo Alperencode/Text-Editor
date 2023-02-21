@@ -3,7 +3,9 @@
 
 /** Macros **/
 #define VERSION "0.0.1"
-#define CTRL_KEY(c) ((c) & 0x1f) /* ands with 0x1f the given key (ctrl key function) */
+
+// Bitwise and with 0x1f the given key (ctrl key function)
+#define CTRL_KEY(c) ((c) & 0x1f)
 
 /** Enums **/
 enum editorKeys{
@@ -11,8 +13,10 @@ enum editorKeys{
     ARROW_RIGHT,
     ARROW_UP,
     ARROW_DOWN,
+    HOME_KEY,
+    END_KEY,
     PAGE_UP,
-    PAGE_DOWN
+    PAGE_DOWN,
 };
 
 /** Function Prototypes **/
@@ -51,7 +55,7 @@ int editorReadKey() {
     char c;
 
     // Wait for a single keypress from the user.
-    while ((readReturn = read(STDIN_FILENO, &c, 1)) != 1)
+    while((readReturn = read(STDIN_FILENO, &c, 1)) != 1)
         if (readReturn == -1) die("read error");
 
     // If key is escape sequence
@@ -73,21 +77,34 @@ int editorReadKey() {
 
                 if (seq[2] == '~') {
                     switch(seq[1]){
-                        // Matching command key
+                        // Matching key
+                        case '1': return HOME_KEY;
+                        case '4': return END_KEY;
                         case '5': return PAGE_UP;
                         case '6': return PAGE_DOWN;
+                        case '7': return HOME_KEY;
+                        case '8': return END_KEY;
                     }
                 }
             }
             else{
                 switch(seq[1]){
-                    // Matching arrow key movements
+                    // Matching key
                     case 'A': return ARROW_UP;
                     case 'B': return ARROW_DOWN;
                     case 'C': return ARROW_RIGHT;
                     case 'D': return ARROW_LEFT;
+                    case 'H': return HOME_KEY;
+                    case 'F': return END_KEY;
                 }
-            }           
+            }
+
+        }else if(seq[0] == 'O'){
+            switch(seq[1]){
+                // Matching key
+                case 'H': return HOME_KEY;
+                case 'F': return END_KEY;
+            }
         }
 
         // If its not any special key, return
@@ -105,16 +122,32 @@ int editorReadKey() {
 void editorProcessKeypress() {
     int c = editorReadKey();
 
-    // If the user pressed Ctrl-Q, exit the program.
-    if (c == CTRL_KEY('q'))
-        die("Exit Program");
+    switch(c) {
+        // If the user pressed Ctrl-Q, exit the program.
+        case CTRL_KEY('q'):
+            die("Exit Program"CTRL_KEY('q'));
+            break;
 
-    else if(c == PAGE_UP || PAGE_DOWN)
-        for(int i = 0; i < Editor.screenRows; i++)
-            editorMoveCursor(c == PAGE_UP ? ARROW_UP : ARROW_DOWN);
+        // Arrow keys: Call MoveCursor
+        case ARROW_UP:
+        case ARROW_DOWN:
+        case ARROW_RIGHT:
+        case ARROW_LEFT:
+            editorMoveCursor(c);
+            break;
 
-    else if(c == ARROW_UP || ARROW_DOWN || ARROW_RIGHT || ARROW_LEFT)
-        editorMoveCursor(c);
+        // Page up/down keys: Call MoveCursor in loop
+        case PAGE_UP:
+        case PAGE_DOWN:
+            for(int i = 0; i < Editor.screenRows; i++)
+                editorMoveCursor(c == PAGE_UP ? ARROW_UP : ARROW_DOWN);
+            break;
+
+        // Default: pass
+        default:
+            break;
+    }
+
 
 }
 
@@ -262,6 +295,9 @@ void die(const char *message) {
     exit(1);
 }
 
+/**
+ * Clears the terminal screen by sending escape sequence
+ */
 void clearScreen(){
     write(STDOUT_FILENO, "\x1b[2J", 4);
 }

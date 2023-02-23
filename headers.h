@@ -1,6 +1,3 @@
-#ifndef LIBRARIES_H
-#define LIBRARIES_H
-
 // Pre-designated
 #include <termios.h>
 #include <ctype.h>
@@ -11,8 +8,6 @@
 #include <sys/ioctl.h>
 
 // My header files
-#include "append_buffer.h"
-#include "editor.h"
-#include "raw_mode.h"
-
-#endif
+#include "headers/append_buffer.h"
+#include "headers/editor.h"
+#include "headers/raw_mode.h"

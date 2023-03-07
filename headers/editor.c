@@ -104,12 +104,19 @@ void editorProcessKeypress() {
             for(int i = 0; i < Editor.screenRows; i++)
                 editorMoveCursor(c == PAGE_UP ? ARROW_UP : ARROW_DOWN);
             break;
+        
+        // Home & End keys: Sets editor cursor
+        case HOME_KEY:
+            Editor.cursorX = 0;
+            break;
+        case END_KEY:
+            Editor.cursorX = Editor.screenCols - 1;
+            break;
 
         // Default: pass
         default:
             break;
     }
-
 
 }
 

@@ -1,4 +1,4 @@
-#include "headers/editor.h"
+#include "editor.h"
 
 int main(){
 
